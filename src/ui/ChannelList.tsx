@@ -72,6 +72,7 @@ export function ChannelList({ title }: { title?: string }) {
   const selectedChannelId = useAppStore((s) => s.selectedChannelId);
   const selectChannel = useAppStore((s) => s.selectChannel);
   const setPlaybackQueue = useAppStore((s) => s.setPlaybackQueue);
+  const setPlayerReturnView = useAppStore((s) => s.setPlayerReturnView);
   const toggleFavorite = useAppStore((s) => s.toggleFavorite);
   const setView = useAppStore((s) => s.setView);
 
@@ -99,6 +100,7 @@ export function ChannelList({ title }: { title?: string }) {
 
   function openPlayer(ch: Channel) {
     setPlaybackQueue(channels.map((item) => item.id));
+    setPlayerReturnView(view);
     selectChannel(ch.id);
     setView('player');
   }
