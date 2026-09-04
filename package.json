@@ -1,0 +1,26 @@
+{
+  "name": "smartplay-iptv-player",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Smartplay IPTV Player v0.2 — Xtream & M3U live TV player (user-provided lists only)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "hls.js": "^1.5.17",
+    "idb-keyval": "^6.2.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.6.3",
+    "vite": "^5.4.11"
+  }
+}
