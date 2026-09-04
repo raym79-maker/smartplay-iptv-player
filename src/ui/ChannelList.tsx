@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import type { Channel } from '../core/types';
 
@@ -63,15 +64,43 @@ function ChannelCard({
 }
 
 export function ChannelList({ title }: { title?: string }) {
-  const filteredChannels = useAppStore((s) => s.filteredChannels);
+  const allChannels = useAppStore((s) => s.channels);
+  const selectedCategoryId = useAppStore((s) => s.selectedCategoryId);
   const favoriteIds = useAppStore((s) => s.favoriteIds);
+  const searchQuery = useAppStore((s) => s.searchQuery);
+  const view = useAppStore((s) => s.view);
   const selectedChannelId = useAppStore((s) => s.selectedChannelId);
   const selectChannel = useAppStore((s) => s.selectChannel);
+  const setPlaybackQueue = useAppStore((s) => s.setPlaybackQueue);
+  const setPlayerReturnView = useAppStore((s) => s.setPlayerReturnView);
   const toggleFavorite = useAppStore((s) => s.toggleFavorite);
   const setView = useAppStore((s) => s.setView);
-  const channels = filteredChannels();
+
+  const channels = useMemo(() => {
+    let list = allChannels;
+
+    if (view === 'favorites') {
+      const favoriteSet = new Set(favoriteIds);
+      list = allChannels.filter((c) => favoriteSet.has(c.id));
+    } else if (selectedCategoryId) {
+      list = allChannels.filter((c) => c.categoryId === selectedCategoryId);
+    }
+
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.groupTitle || '').toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [allChannels, selectedCategoryId, favoriteIds, searchQuery, view]);
 
   function openPlayer(ch: Channel) {
+    setPlaybackQueue(channels.map((item) => item.id));
+    setPlayerReturnView(view);
     selectChannel(ch.id);
     setView('player');
   }

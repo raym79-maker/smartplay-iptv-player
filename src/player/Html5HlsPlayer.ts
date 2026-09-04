@@ -1,23 +1,14 @@
 import Hls from 'hls.js';
-
-export type PlayerEvent =
-  | 'playing'
-  | 'paused'
-  | 'ended'
-  | 'error'
-  | 'waiting'
-  | 'canplay';
-
-type Listener = (payload?: unknown) => void;
+import type { PlayerAdapter, PlayerEvent, PlayerListener } from './PlayerAdapter';
 
 /**
- * Thin wrapper around HTMLVideoElement + hls.js for HLS streams.
- * Falls back to native HLS (Safari) when available.
+ * Web implementation of PlayerAdapter using HTMLVideoElement + hls.js.
+ * Falls back to native HLS when the browser provides it.
  */
-export class Html5HlsPlayer {
+export class Html5HlsPlayer implements PlayerAdapter {
   private video: HTMLVideoElement;
   private hls: Hls | null = null;
-  private listeners = new Map<PlayerEvent, Set<Listener>>();
+  private listeners = new Map<PlayerEvent, Set<PlayerListener>>();
   private currentUrl: string | null = null;
 
   constructor(video: HTMLVideoElement) {
@@ -40,7 +31,7 @@ export class Html5HlsPlayer {
     });
   }
 
-  on(event: PlayerEvent, fn: Listener): () => void {
+  on(event: PlayerEvent, fn: PlayerListener): () => void {
     if (!this.listeners.has(event)) this.listeners.set(event, new Set());
     this.listeners.get(event)!.add(fn);
     return () => this.listeners.get(event)?.delete(fn);
@@ -52,6 +43,7 @@ export class Html5HlsPlayer {
 
   async load(url: string): Promise<void> {
     this.destroyHls();
+    this.video.removeAttribute('src');
     this.currentUrl = url;
 
     const canNative =
@@ -104,7 +96,8 @@ export class Html5HlsPlayer {
         this.video.addEventListener('error', onErr);
       });
     } else {
-      // Progressive / MPEG-TS / progressive MP4 — try direct
+      // Progressive / MPEG-TS / MP4: browser support varies. Android will use
+      // a native Media3 adapter in the next phase for broader IPTV support.
       this.video.src = url;
     }
   }

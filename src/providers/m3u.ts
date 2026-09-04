@@ -21,14 +21,25 @@ function parseExtInfName(line: string): string {
 function slugify(s: string): string {
   return s
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
-    .slice(0, 64) || 'cat';
+    .slice(0, 64) || 'item';
+}
+
+/** Small deterministic hash for stable IDs when tvg-id is unavailable. */
+function stableHash(value: string): string {
+  let hash = 5381;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = ((hash << 5) + hash) ^ value.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(36);
 }
 
 /**
  * Parse M3U / M3U8 playlist text into categories + channels.
- * Supports #EXTINF with tvg-logo, group-title, and following URL line.
+ * Supports #EXTINF with tvg-id, tvg-logo, group-title, and following URL line.
  */
 export function parseM3u(content: string): {
   categories: Category[];
@@ -42,13 +53,14 @@ export function parseM3u(content: string): {
 
   const categoryMap = new Map<string, Category>();
   const channels: Channel[] = [];
+  const usedIds = new Set<string>();
   let pending: {
     name: string;
     logo?: string;
     group: string;
+    tvgId?: string;
   } | null = null;
 
-  let idx = 0;
   for (const line of lines) {
     if (line.startsWith('#EXTINF')) {
       const attrs = parseExtInfAttrs(line);
@@ -58,20 +70,29 @@ export function parseM3u(content: string): {
         name,
         logo: attrs['tvg-logo'] || attrs['logo'] || undefined,
         group,
+        tvgId: attrs['tvg-id'] || undefined,
       };
       continue;
     }
 
     if (line.startsWith('#')) continue;
 
-    // URL line
     if (pending) {
       const group = pending.group;
       const catId = `m3u:${slugify(group)}`;
       if (!categoryMap.has(catId)) {
         categoryMap.set(catId, { id: catId, name: group });
       }
-      const id = `m3u:${idx}:${slugify(pending.name)}`;
+
+      const identity = pending.tvgId?.trim()
+        ? `tvg:${slugify(pending.tvgId)}`
+        : `url:${stableHash(line)}`;
+      let id = `m3u:${identity}`;
+      if (usedIds.has(id)) {
+        id = `${id}:${stableHash(`${pending.name}|${group}|${line}`)}`;
+      }
+      usedIds.add(id);
+
       channels.push({
         id,
         name: pending.name,
@@ -79,8 +100,8 @@ export function parseM3u(content: string): {
         categoryId: catId,
         url: line,
         groupTitle: group,
+        meta: pending.tvgId ? { tvg_id: pending.tvgId } : undefined,
       });
-      idx += 1;
       pending = null;
     }
   }

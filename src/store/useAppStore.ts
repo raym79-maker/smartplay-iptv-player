@@ -20,12 +20,14 @@ import { isM3uAccount, loadM3uCatalog } from '../providers/m3u';
 interface AppState {
   hydrated: boolean;
   view: ViewId;
+  playerReturnView: ViewId;
   connectionMode: ConnectionMode;
   account: Account | null;
   categories: Category[];
   channels: Channel[];
   selectedCategoryId: string | null;
   selectedChannelId: string | null;
+  playbackQueueIds: string[];
   favoriteIds: string[];
   searchQuery: string;
   loading: boolean;
@@ -34,11 +36,13 @@ interface AppState {
 
   hydrate: () => Promise<void>;
   setView: (view: ViewId) => void;
+  setPlayerReturnView: (view: ViewId) => void;
   setConnectionMode: (mode: ConnectionMode) => void;
   setSearchQuery: (q: string) => void;
   setPlayerStatus: (s: string) => void;
   setSelectedCategory: (id: string | null) => void;
   selectChannel: (id: string | null) => void;
+  setPlaybackQueue: (ids: string[]) => void;
   toggleFavorite: (channelId: string) => void;
   connect: (account: Account) => Promise<void>;
   reloadCatalog: () => Promise<void>;
@@ -50,12 +54,14 @@ interface AppState {
 export const useAppStore = create<AppState>((set, get) => ({
   hydrated: false,
   view: 'connect',
+  playerReturnView: 'browse',
   connectionMode: 'xtream',
   account: null,
   categories: [],
   channels: [],
   selectedCategoryId: null,
   selectedChannelId: null,
+  playbackQueueIds: [],
   favoriteIds: [],
   searchQuery: '',
   loading: false,
@@ -86,6 +92,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setView: (view) => set({ view }),
+  setPlayerReturnView: (view) => set({ playerReturnView: view }),
   setConnectionMode: (mode) => set({ connectionMode: mode }),
   setSearchQuery: (q) => set({ searchQuery: q }),
   setPlayerStatus: (s) => set({ playerStatus: s }),
@@ -99,6 +106,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ selectedChannelId: id });
     void saveLastChannelId(id);
   },
+
+  setPlaybackQueue: (ids) => set({ playbackQueueIds: ids }),
 
   toggleFavorite: (channelId) => {
     const { favoriteIds } = get();
@@ -133,6 +142,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         categories,
         channels,
         selectedCategoryId: firstCat,
+        playbackQueueIds: [],
+        playerReturnView: 'browse',
         loading: false,
         error: null,
         view: 'browse',
@@ -169,6 +180,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         categories,
         channels,
+        playbackQueueIds: [],
         selectedCategoryId: stillValid
           ? selectedCategoryId
           : categories[0]?.id ?? null,
@@ -191,10 +203,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       channels: [],
       selectedCategoryId: null,
       selectedChannelId: null,
+      playbackQueueIds: [],
       favoriteIds: [],
       searchQuery: '',
       error: null,
       view: 'connect',
+      playerReturnView: 'browse',
       playerStatus: '',
     });
   },
