@@ -20,6 +20,7 @@ import { isM3uAccount, loadM3uCatalog } from '../providers/m3u';
 interface AppState {
   hydrated: boolean;
   view: ViewId;
+  playerReturnView: ViewId;
   connectionMode: ConnectionMode;
   account: Account | null;
   categories: Category[];
@@ -35,6 +36,7 @@ interface AppState {
 
   hydrate: () => Promise<void>;
   setView: (view: ViewId) => void;
+  setPlayerReturnView: (view: ViewId) => void;
   setConnectionMode: (mode: ConnectionMode) => void;
   setSearchQuery: (q: string) => void;
   setPlayerStatus: (s: string) => void;
@@ -52,6 +54,7 @@ interface AppState {
 export const useAppStore = create<AppState>((set, get) => ({
   hydrated: false,
   view: 'connect',
+  playerReturnView: 'browse',
   connectionMode: 'xtream',
   account: null,
   categories: [],
@@ -89,6 +92,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setView: (view) => set({ view }),
+  setPlayerReturnView: (view) => set({ playerReturnView: view }),
   setConnectionMode: (mode) => set({ connectionMode: mode }),
   setSearchQuery: (q) => set({ searchQuery: q }),
   setPlayerStatus: (s) => set({ playerStatus: s }),
@@ -139,6 +143,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         channels,
         selectedCategoryId: firstCat,
         playbackQueueIds: [],
+        playerReturnView: 'browse',
         loading: false,
         error: null,
         view: 'browse',
@@ -203,6 +208,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       searchQuery: '',
       error: null,
       view: 'connect',
+      playerReturnView: 'browse',
       playerStatus: '',
     });
   },
