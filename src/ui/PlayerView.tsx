@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { playerManager } from '../player/PlayerManager';
 
@@ -6,26 +6,30 @@ export function PlayerView() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const channels = useAppStore((s) => s.channels);
   const selectedChannelId = useAppStore((s) => s.selectedChannelId);
+  const playbackQueueIds = useAppStore((s) => s.playbackQueueIds);
   const selectChannel = useAppStore((s) => s.selectChannel);
   const setView = useAppStore((s) => s.setView);
   const setPlayerStatus = useAppStore((s) => s.setPlayerStatus);
   const playerStatus = useAppStore((s) => s.playerStatus);
   const favoriteIds = useAppStore((s) => s.favoriteIds);
   const toggleFavorite = useAppStore((s) => s.toggleFavorite);
-  const filteredChannels = useAppStore((s) => s.filteredChannels);
   const view = useAppStore((s) => s.view);
 
-  const current =
-    channels.find((c) => c.id === selectedChannelId) || null;
+  const channelById = useMemo(
+    () => new Map(channels.map((channel) => [channel.id, channel])),
+    [channels]
+  );
 
-  const zapList = useCallback(() => {
-    const filtered = filteredChannels();
-    // Prefer current category/filter list for zapping; fall back to all
-    if (filtered.length > 0 && selectedChannelId) {
-      if (filtered.some((c) => c.id === selectedChannelId)) return filtered;
-    }
-    return channels;
-  }, [filteredChannels, channels, selectedChannelId]);
+  const current = selectedChannelId
+    ? channelById.get(selectedChannelId) || null
+    : null;
+
+  const playbackQueue = useMemo(() => {
+    const queue = playbackQueueIds
+      .map((id) => channelById.get(id))
+      .filter((channel): channel is NonNullable<typeof channel> => !!channel);
+    return queue.length > 0 ? queue : channels;
+  }, [playbackQueueIds, channelById, channels]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -34,7 +38,9 @@ export function PlayerView() {
     playerManager.attach(video);
     playerManager.setCallbacks({
       onChannelChange: (ch) => {
-        if (ch) selectChannel(ch.id);
+        if (ch && ch.id !== useAppStore.getState().selectedChannelId) {
+          selectChannel(ch.id);
+        }
       },
       onStatus: setPlayerStatus,
     });
@@ -45,35 +51,43 @@ export function PlayerView() {
   }, [selectChannel, setPlayerStatus]);
 
   useEffect(() => {
-    if (view !== 'player' || !selectedChannelId) return;
-    const list = zapList();
-    const ch = list.find((c) => c.id === selectedChannelId) ||
-      channels.find((c) => c.id === selectedChannelId);
-    if (!ch) return;
-    playerManager.setPlaylist(list, ch.id);
-    void playerManager.playChannel(ch).catch(() => {
+    if (view !== 'player' || !current) return;
+
+    playerManager.setPlaylist(playbackQueue, current.id);
+    void playerManager.playChannel(current).catch(() => {
       /* status already set */
     });
-  }, [selectedChannelId, view]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [current, playbackQueue, view]);
 
   const goBack = useCallback(() => {
     playerManager.pause();
     setView('browse');
   }, [setView]);
 
-  const zapNext = useCallback(async () => {
-    const list = zapList();
-    playerManager.setPlaylist(list, selectedChannelId || undefined);
-    const ch = await playerManager.next();
-    if (ch) selectChannel(ch.id);
-  }, [zapList, selectedChannelId, selectChannel]);
+  const selectRelative = useCallback(
+    (direction: 1 | -1) => {
+      if (playbackQueue.length === 0) return;
+      const currentIndex = selectedChannelId
+        ? playbackQueue.findIndex((channel) => channel.id === selectedChannelId)
+        : -1;
+      const baseIndex = currentIndex >= 0 ? currentIndex : 0;
+      const nextIndex =
+        (baseIndex + direction + playbackQueue.length) % playbackQueue.length;
+      const nextChannel = playbackQueue[nextIndex];
+      if (nextChannel && nextChannel.id !== selectedChannelId) {
+        selectChannel(nextChannel.id);
+      }
+    },
+    [playbackQueue, selectedChannelId, selectChannel]
+  );
 
-  const zapPrev = useCallback(async () => {
-    const list = zapList();
-    playerManager.setPlaylist(list, selectedChannelId || undefined);
-    const ch = await playerManager.prev();
-    if (ch) selectChannel(ch.id);
-  }, [zapList, selectedChannelId, selectChannel]);
+  const zapNext = useCallback(() => {
+    selectRelative(1);
+  }, [selectRelative]);
+
+  const zapPrev = useCallback(() => {
+    selectRelative(-1);
+  }, [selectRelative]);
 
   useEffect(() => {
     if (view !== 'player') return;
@@ -85,21 +99,15 @@ export function PlayerView() {
       switch (e.key) {
         case 'ArrowRight':
         case 'ChannelDown':
+        case 'ArrowDown':
           e.preventDefault();
-          void zapNext();
+          zapNext();
           break;
         case 'ArrowLeft':
         case 'ChannelUp':
-          e.preventDefault();
-          void zapPrev();
-          break;
         case 'ArrowUp':
           e.preventDefault();
-          void zapPrev();
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          void zapNext();
+          zapPrev();
           break;
         case 'Enter':
         case ' ':
@@ -168,10 +176,10 @@ export function PlayerView() {
       </div>
 
       <div className="player-controls">
-        <button type="button" className="btn" onClick={() => void zapPrev()}>
+        <button type="button" className="btn" onClick={zapPrev}>
           ⟵ Prev
         </button>
-        <button type="button" className="btn" onClick={() => void zapNext()}>
+        <button type="button" className="btn" onClick={zapNext}>
           Next ⟶
         </button>
         <span className="hint muted">
