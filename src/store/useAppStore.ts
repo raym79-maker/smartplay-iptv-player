@@ -26,6 +26,7 @@ interface AppState {
   channels: Channel[];
   selectedCategoryId: string | null;
   selectedChannelId: string | null;
+  playbackQueueIds: string[];
   favoriteIds: string[];
   searchQuery: string;
   loading: boolean;
@@ -39,6 +40,7 @@ interface AppState {
   setPlayerStatus: (s: string) => void;
   setSelectedCategory: (id: string | null) => void;
   selectChannel: (id: string | null) => void;
+  setPlaybackQueue: (ids: string[]) => void;
   toggleFavorite: (channelId: string) => void;
   connect: (account: Account) => Promise<void>;
   reloadCatalog: () => Promise<void>;
@@ -56,6 +58,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   channels: [],
   selectedCategoryId: null,
   selectedChannelId: null,
+  playbackQueueIds: [],
   favoriteIds: [],
   searchQuery: '',
   loading: false,
@@ -100,6 +103,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     void saveLastChannelId(id);
   },
 
+  setPlaybackQueue: (ids) => set({ playbackQueueIds: ids }),
+
   toggleFavorite: (channelId) => {
     const { favoriteIds } = get();
     const next = favoriteIds.includes(channelId)
@@ -133,6 +138,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         categories,
         channels,
         selectedCategoryId: firstCat,
+        playbackQueueIds: [],
         loading: false,
         error: null,
         view: 'browse',
@@ -169,6 +175,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         categories,
         channels,
+        playbackQueueIds: [],
         selectedCategoryId: stillValid
           ? selectedCategoryId
           : categories[0]?.id ?? null,
@@ -191,6 +198,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       channels: [],
       selectedCategoryId: null,
       selectedChannelId: null,
+      playbackQueueIds: [],
       favoriteIds: [],
       searchQuery: '',
       error: null,
