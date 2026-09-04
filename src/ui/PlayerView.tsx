@@ -7,6 +7,7 @@ export function PlayerView() {
   const channels = useAppStore((s) => s.channels);
   const selectedChannelId = useAppStore((s) => s.selectedChannelId);
   const playbackQueueIds = useAppStore((s) => s.playbackQueueIds);
+  const playerReturnView = useAppStore((s) => s.playerReturnView);
   const selectChannel = useAppStore((s) => s.selectChannel);
   const setView = useAppStore((s) => s.setView);
   const setPlayerStatus = useAppStore((s) => s.setPlayerStatus);
@@ -61,8 +62,8 @@ export function PlayerView() {
 
   const goBack = useCallback(() => {
     playerManager.pause();
-    setView('browse');
-  }, [setView]);
+    setView(playerReturnView === 'player' || playerReturnView === 'connect' ? 'browse' : playerReturnView);
+  }, [setView, playerReturnView]);
 
   const selectRelative = useCallback(
     (direction: 1 | -1) => {
